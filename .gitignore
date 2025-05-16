@@ -1,6 +1,11 @@
 # Prerequisites
 *.d
 
+encoder
+main
+run_tests
+.vscode/tasks.json
+
 # Object files
 *.o
 *.ko
