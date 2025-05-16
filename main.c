@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include "utils/crypto.h"
 
-#define DEFAULT_PW_LENGTH 16
+#define DEFAULT_PW_LENGTH 24
 
 
 /**
