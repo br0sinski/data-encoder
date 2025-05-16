@@ -3,10 +3,18 @@
 #include <string.h>
 
 // Source: https://github.com/B-Con/crypto-algorithms
-#include "../sha256/sha256.h"
+#include "../algorithms/sha256.h"
+// Source: https://github.com/kokke/tiny-AES-c/
+#include "../algorithms/aes_cbc.h"
 
 #include "random.h"
 #define BUFFER_SIZE 1024
+
+ // 16 for AES-128, 32 for AES-256
+#define AES_KEYLEN 16
+
+#define AES_BLOCKLEN 16
+
 
 /**
  * Generate a cryptographically secure random password using a stream of upper/-lowercase letters and digits
@@ -76,42 +84,94 @@ void xor_crypt(FILE *in_file, FILE *out_file, const uint8_t *key_stream, size_t 
  * **/
 void encrypt_file(const char *input_filename, const char *output_filename, const char *password) {
     FILE *in_file = fopen(input_filename, "rb");
-    if (!in_file) {
-        fprintf(stderr, "Input file error");
-        exit(1);
-    }
-
+    if (!in_file) { fprintf(stderr, "Input file error"); exit(1); }
     FILE *out_file = fopen(output_filename, "wb");
-    if (!out_file) {
-        fprintf(stderr,"Output file error");
-        fclose(in_file);
-        exit(1);
-    }
+    if (!out_file) { fprintf(stderr,"Output file error"); fclose(in_file); exit(1); }
 
     fseek(in_file, 0, SEEK_END);
     long file_size = ftell(in_file);
     rewind(in_file);
 
-    uint8_t *key_stream = malloc(file_size);
-    if (!key_stream) {
-        fprintf(stderr, "Memory allocation failed.\n");
-        fclose(in_file);
-        fclose(out_file);
-        exit(1);
-    }
+    size_t padded_size = ((file_size / AES_BLOCKLEN) + 1) * AES_BLOCKLEN;
+    uint8_t *in_buf = calloc(1, padded_size);
+    fread(in_buf, 1, file_size, in_file);
+    pkcs7_pad(in_buf, file_size, padded_size);
 
-    key_gen(password, key_stream, file_size);
-    xor_crypt(in_file, out_file, key_stream, file_size);
+    uint8_t key[AES_KEYLEN];
+    key_gen(password, key, AES_KEYLEN);
 
-    memset(key_stream, 0, file_size);
-    free(key_stream);
+    uint8_t iv[AES_BLOCKLEN];
+    get_secure_random_bytes(iv, AES_BLOCKLEN);
+
+    fwrite(iv, 1, AES_BLOCKLEN, out_file);
+
+    struct AES_ctx ctx;
+    AES_init_ctx_iv(&ctx, key, iv);
+    AES_CBC_encrypt_buffer(&ctx, in_buf, padded_size);
+
+    fwrite(in_buf, 1, padded_size, out_file);
+
+    memset(key, 0, sizeof(key));
+    memset(iv, 0, sizeof(iv));
+    memset(in_buf, 0, padded_size);
+    free(in_buf);
     fclose(in_file);
     fclose(out_file);
 }
 
 /**
- * Decrypts a file using a password by using the encrypt_file() method as (again) XOR is symmetric!
+ * TODO
  * **/
 void decrypt_file(const char *input_filename, const char *output_filename, const char *password) {
-    encrypt_file(input_filename, output_filename, password);  
+    FILE *in_file = fopen(input_filename, "rb");
+    if (!in_file) { fprintf(stderr, "Input file error"); exit(1); }
+    FILE *out_file = fopen(output_filename, "wb");
+    if (!out_file) { fprintf(stderr,"Output file error"); fclose(in_file); exit(1); }
+
+    uint8_t iv[AES_BLOCKLEN];
+    fread(iv, 1, AES_BLOCKLEN, in_file);
+
+    fseek(in_file, 0, SEEK_END);
+    long file_size = ftell(in_file) - AES_BLOCKLEN;
+    rewind(in_file);
+    fseek(in_file, AES_BLOCKLEN, SEEK_SET);
+
+    uint8_t *enc_buf = malloc(file_size);
+    fread(enc_buf, 1, file_size, in_file);
+
+    uint8_t key[AES_KEYLEN];
+    key_gen(password, key, AES_KEYLEN);
+
+    struct AES_ctx ctx;
+    AES_init_ctx_iv(&ctx, key, iv);
+    AES_CBC_decrypt_buffer(&ctx, enc_buf, file_size);
+
+    size_t unpad_len = pkcs7_unpad(enc_buf, file_size);
+    fwrite(enc_buf, 1, unpad_len, out_file);
+
+    memset(key, 0, sizeof(key));
+    memset(iv, 0, sizeof(iv));
+    memset(enc_buf, 0, file_size);
+    free(enc_buf);
+    fclose(in_file);
+    fclose(out_file);
+}
+
+
+/**
+ * Simple helper method for the AES padding that is used to make the input data (given file) a multiple of the AES block size (16 bytes right now)
+ * When encrypting this method fills the remaining bytes of the last block with the values of padding bytes
+ * */
+void pkcs7_pad(uint8_t *buf, size_t data_len, size_t padded_len) {
+    uint8_t pad = padded_len - data_len;
+    for (size_t i = data_len; i < padded_len; ++i) {
+        buf[i] = pad;
+    }
+}
+
+size_t pkcs7_unpad(uint8_t *buf, size_t len) {
+    if (len == 0) return 0;
+    uint8_t pad = buf[len - 1];
+    if (pad > AES_BLOCKLEN) return len;
+    return len - pad;
 }
