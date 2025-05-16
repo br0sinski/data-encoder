@@ -1,7 +1,10 @@
 #include "crypto.h"
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/sha.h>
+
+// Source: https://github.com/B-Con/crypto-algorithms
+#include "../sha256/sha256.h"
+
 #include "random.h"
 #define BUFFER_SIZE 1024
 
@@ -33,25 +36,23 @@ void generate_secure_password(char *password, size_t length) {
  * of the OpenSSL library, as it is not allowed for me to use external libs I guess? (this is part of my cybersecurity class for anyone reading this)
  * **/
 void key_gen(const char *password, uint8_t *key, size_t length) {
-    uint8_t hash[SHA256_DIGEST_LENGTH];
+    uint8_t hash[32]; 
     size_t generated = 0;
     size_t count = 0;
 
     while (generated < length) {
         SHA256_CTX ctx;
-        SHA256_Init(&ctx);
+        sha256_init(&ctx);
+        sha256_update(&ctx, (const uint8_t*)password, strlen(password));
+        sha256_update(&ctx, (const uint8_t*)&count, sizeof(count));
+        sha256_final(&ctx, hash);
 
-        SHA256_Update(&ctx, password, strlen(password));
-        SHA256_Update(&ctx, &count, sizeof(count));
-
-        SHA256_Final(hash, &ctx);
-
-        size_t to_copy = (length - generated < SHA256_DIGEST_LENGTH) ? (length - generated) : SHA256_DIGEST_LENGTH;
-        memcpy(key + generated,hash,to_copy);
+        size_t to_copy = (length - generated < 32) ? (length - generated) : 32;
+        memcpy(key + generated, hash, to_copy);
 
         generated += to_copy;
         count++;
-        }
+    }
 }
 
 /**

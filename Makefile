@@ -12,9 +12,9 @@ else
 	RUN_TESTS=./run_tests
 endif
 
-SRCS=main.c utils/crypto.c utils/random.c
+SRCS=main.c utils/crypto.c utils/random.c sha256/sha256.c
 OBJS=$(SRCS:.c=.o)
-TEST_SRCS=tests/crypto_test.c utils/crypto.c utils/random.c
+TEST_SRCS=tests/crypto_test.c utils/crypto.c utils/random.c sha256/sha256.c
 TEST_OBJS=$(TEST_SRCS:.c=.o)
 
 all: encoder$(EXE)
