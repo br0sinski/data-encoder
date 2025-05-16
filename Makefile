@@ -3,7 +3,7 @@ CFLAGS=-Wall -Wextra -O2
 ifeq ($(OS),Windows_NT)
 	EXE=.exe
 	RM=del /Q
-	LDFLAGS=
+	LDFLAGS=-lbcrypt
 	RUN_TESTS=run_tests.exe
 else
 	EXE=
