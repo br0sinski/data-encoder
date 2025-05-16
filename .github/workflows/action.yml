@@ -1,0 +1,32 @@
+name: Build and run Unit Tests for both Linux and Windows
+
+on:
+  push:
+    branches: [ main, feat/gh_workflow ]
+  pull_request:
+    branches: [ main, feat/gh_workflow ]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install build tools
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y build-essential
+
+    - name: Install build tools (Windows)
+      if: runner.os == 'Windows'
+      run: choco install make mingw
+
+    - name: Build
+      run: make
+
+    - name: Run unit tests
+      run: make test
