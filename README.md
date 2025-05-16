@@ -2,6 +2,11 @@
 
 A simple data en/-decryptor with a little password generator - written in C for educational purposes
 
+## CI Status
+
+You can check the [GitHub Actions](https://github.com/br0sinski/de-encryptor/actions) page to see if the build and tests run successfully on both **Linux** and **Windows**.
+The GitHub Workflow file can be found [here](https://github.com/br0sinski/de-encryptor/blob/main/.github/workflows/action.yml)
+
 ## Build
 
 ```sh
