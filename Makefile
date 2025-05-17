@@ -4,7 +4,7 @@ ifeq ($(OS),Windows_NT)
 	EXE=.exe
 	RM=del /Q
 	LDFLAGS=-lbcrypt
-	RUN_TESTS=run_tests.exe
+	RUN_TESTS=./run_tests.exe
 else
 	EXE=
 	RM=rm -f
